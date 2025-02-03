@@ -14,52 +14,66 @@ By addressing these factors, this model enables dynamic pricing and production a
 
 ### 1. **Traditional Newsvendor Model**
 Given:
-- $ p $: selling price per unit
-- $ c $: production cost per unit
-- $ D \sim f(D) $: random demand with known distribution
+- $p$: selling price per unit
+- $c$: production cost per unit
+- $D \sim f(D)$: random demand with known distribution
 
 Objective:
+
 $$
-\max_q E[p \min(q, D) - qc]
+\max_q \mathbb{E}[p \min(q, D) - qc]
 $$
-Using past demand observations $ D_i $, this is approximated as:
+
+Using past demand observations $D_i$, this is approximated as:
+
 $$
-\max_q \frac{1}{n} \sum_{i=1}^{n} (p \min(q, D_i) - qc)
+\max_q \frac{1}{n} \sum_{i=1}^{n} \left( p \min(q, D_i) - qc \right)
 $$
-This is nonlinear due to $ \min(q, D_i) $, but can be reformulated as a **Linear Program (LP)**:
+
+This is nonlinear due to $\min(q, D_i)$, but can be reformulated as a **Linear Program (LP)**:
+
 $$
 \max_{q, h_i} \frac{1}{n} \sum_{i=1}^{n} h_i
 $$
+
 subject to:
+
 $$
-h_i \leq pD_i - qc
+ h_i \leq pD_i - qc
 $$
+
 $$
-h_i \leq pq - qc
+ h_i \leq pq - qc
 $$
 
 ### 2. **Extended Model with Rush Orders and Disposal Fees**
 
 Additional Parameters:
-- $ g > c $: cost per rushed unit
-- $ t \geq 0 $: disposal cost per excess unit
+- $g > c$: cost per rushed unit
+- $t \geq 0$: disposal cost per excess unit
 
 Revised Objective:
+
 $$
 \max_q \frac{1}{n} \sum_{i=1}^{n} \left( pD_i - qc - g(D_i - q)^+ - t(q - D_i)^+ \right)
 $$
-where $ (x)^+ = \max(x, 0) $. Reformulated as an LP by introducing dummy variables.
+
+where $(x)^+ = \max(x, 0)$. Reformulated as an LP by introducing dummy variables.
 
 ### 3. **Price-Dependent Demand Model**
 Demand is modeled as:
+
 $$
 D_i = \beta_0 + \beta_1 p + \epsilon_i
 $$
-where $ \beta_0, \beta_1 $ are estimated via **Linear Regression**.
+
+where $\beta_0, \beta_1$ are estimated via **Linear Regression**.
 Substituting into the profit equation:
+
 $$
-\max_{p,q} \frac{1}{n} \sum_{i=1}^{n} (p(\beta_0 + \beta_1 p + \epsilon_i) - qc - g(D_i - q)^+ - t(q - D_i)^+)
+\max_{p,q} \frac{1}{n} \sum_{i=1}^{n} \left( p(\beta_0 + \beta_1 p + \epsilon_i) - qc - g(D_i - q)^+ - t(q - D_i)^+ \right)
 $$
+
 which introduces quadratic terms, making it a **Quadratic Program (QP)**.
 
 ## Implementation Details
@@ -74,36 +88,36 @@ which introduces quadratic terms, making it a **Quadratic Program (QP)**.
 ### **Steps in Code Implementation**
 1. **Data Preprocessing:**
    - Load historical **price-demand data**.
-   - Fit **Linear Regression** to estimate $ \beta_0, \beta_1 $.
+   - Fit **Linear Regression** to estimate $\beta_0, \beta_1$.
 2. **Fixed Price LP Solution:**
-   - Solve for $ q^* $ using Gurobi.
+   - Solve for $q^*$ using Gurobi.
 3. **Price-Dependent QP/QCP Solution:**
    - Introduce **decision variables for price and quantity**.
    - Formulate **QP/QCP** constraints.
    - Solve using Gurobi.
 4. **Bootstrapping:**
-   - Repeatedly sample data, refit $ \beta_0, \beta_1 $, and solve.
-   - Analyze variations in optimal $ p^* $ and $ q^* $.
+   - Repeatedly sample data, refit $\beta_0, \beta_1$, and solve.
+   - Analyze variations in optimal p* and q*.
 
 ## Results and Insights
 
 | Model | Optimal Price | Optimal Quantity | Profit |
 |--------|--------------|-----------------|--------|
-| Linear NVM (Fixed $ p $) | 1.00 | 472 | \$210-220 |
+| Linear NVM (Fixed $p$) | 1.00 | 472 | \$210-220 |
 | Nonlinear NVM (QP) | 0.95 | 535 | \$230-240 |
 
 ### **Key Findings:**
 - Allowing price optimization **increases profit** by ~10%.
-- Optimal price $ p^* $ lies between **0.91 - 0.99**.
-- Optimal quantity $ q^* $ shifts from **472 to ~535**.
+- Optimal price $p^*$ lies between **0.91 - 0.99**.
+- Optimal quantity $q^*$ shifts from **472 to ~535**.
 - **Bootstrapping results:** 
   - **Price distribution:** Peaks at **0.95**.
   - **Quantity distribution:** Skewed right, clustering around **500-580**.
 
 ### **Visualization:**
-- **Histogram of Optimal Price & Quantity** confirms a quadratic demand-price relationship.
-- **Profit Distribution Analysis:** Majority falls between **$230-$240**, validating robustness.
-- **Scatter Plot of $ p^* $ vs. $ q^* $:** Clear **inverse price-demand trend**.
+- Histogram of Optimal Price & Quantity confirms a quadratic demand-price relationship.
+- Profit Distribution Analysis: Majority falls between **$230-$240**, validating robustness.
+- Scatter Plot of p* vs. q*: Clear **inverse price-demand trend**.
 
 ## Advantages of Nonlinear Programming
 
